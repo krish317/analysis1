@@ -52,43 +52,70 @@ def fetch_order_book(symbol="BTCUSDT", limit=100):
 def send_telegram_notification(message):
     try:
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-        payload = {"chat_id": TELEGRAM_GROUP_ID, "text": message}
+        payload = {"chat_id": TELEGRAM_GROUP_ID, "text": message, "parse_mode": "Markdown"}
         response = requests.post(url, json=payload)
-        print(response.json()) 
-        
+        print(response.json())
+
         if response.status_code == 200:
             logging.info(f"Telegram Alert Sent: {message}")
-            #print(f"📢 Telegram Notification Sent: {message}")
         else:
             logging.error(f"Failed to send Telegram message: {response.text}")
 
     except Exception as e:
         logging.error(f"Error sending Telegram message: {e}")
 
+# Function to send color-coded whale alerts
+def send_whale_alert(volume, price, order_type):
+    """Send color-coded whale alerts based on BTC volume."""
+    
+    # Define color coding based on volume range
+    if 10 <= volume < 50:
+        color = "⚫"  # Black for both Buy and Sell
+        level = "Small Whale"
+    elif 50 <= volume < 100:
+        color = "🟣" if order_type == "BUY" else "🟡"  # Purple for Buy, Yellow for Sell
+        level = "Medium Whale"
+    elif 100 <= volume < 150:
+        color = "🔵" if order_type == "BUY" else "🟠"  # Blue for Buy, Orange for Sell
+        level = "Large Whale"
+    elif 150 <= volume < 200:
+        color = "🟢" if order_type == "BUY" else "🔴"  # Green for Buy, Red for Sell
+        level = "Mega Whale"
+    else:
+        return  # Ignore if volume is below 10
+
+    # Format the message
+    message = f"{color} *{level} Alert!*\n" \
+              f"🐳 Large {order_type} Order Detected:\n" \
+              f"🔼 {volume} BTC at {price}"
+
+    # Send notification
+    send_telegram_notification(message)
+
 # Analyze order book
 def analyze_order_book(order_book):
     try:
         bids = order_book["bids"]
         asks = order_book["asks"]
-        
+
         total_bid_volume = sum([float(b[1]) for b in bids])
         total_ask_volume = sum([float(a[1]) for a in asks])
         largest_buy_wall = max(bids, key=lambda b: float(b[1]))
         largest_sell_wall = max(asks, key=lambda a: float(a[1]))
         spread = float(asks[0][0]) - float(bids[0][0])
 
-        # Whale Alert Notifications
-        if float(largest_buy_wall[1]) >= WHALER_THRESHOLD:
-            whale_alert = f"🟢 **Bullish Alert!**\n" \
-                          f"🐳 Large Buy Order Detected:\n" \
-                          f"🔼 {largest_buy_wall[1]} BTC at {largest_buy_wall[0]}"
-            send_telegram_notification(whale_alert)
+        # Extract buy & sell volume and price
+        buy_volume = float(largest_buy_wall[1])
+        sell_volume = float(largest_sell_wall[1])
+        buy_price = largest_buy_wall[0]
+        sell_price = largest_sell_wall[0]
 
-        if float(largest_sell_wall[1]) >= WHALER_THRESHOLD:
-            whale_alert = f"🔴 **Bearish Alert!**\n" \
-                          f"🐳 Large Sell Order Detected:\n" \
-                          f"🔽 {largest_sell_wall[1]} BTC at {largest_sell_wall[0]}"
-            send_telegram_notification(whale_alert)
+        # Send whale alerts based on volume thresholds
+        if buy_volume >= WHALER_THRESHOLD:
+            send_whale_alert(buy_volume, buy_price, "BUY")
+
+        if sell_volume >= WHALER_THRESHOLD:
+            send_whale_alert(sell_volume, sell_price, "SELL")
 
         return {
             "total_bid_volume": total_bid_volume,
