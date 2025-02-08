@@ -15,11 +15,12 @@ client = Client(API_KEY, API_SECRET)
 CSV_FILE = "order_book_predictions.csv"
 INTERVAL = 10  # Fetch data every 10 seconds
 CHECK_ENTRIES = 5  # Check last 5 entries for trend detection
-WHALER_THRESHOLD = 50  # BTC volume to be considered a whale
+WHALER_THRESHOLD = 10  # BTC volume to be considered a whale
 
 # Telegram Notification Setup
 TELEGRAM_BOT_TOKEN = "7634717158:AAHMMksZXje9CEF4qEMn3Vgge5F_qNs6sHg"
 TELEGRAM_CHAT_ID = "5463783915"
+TELEGRAM_GROUP_ID = "-4695344604"
 
 # Logging setup
 logging.basicConfig(
@@ -51,13 +52,13 @@ def fetch_order_book(symbol="BTCUSDT", limit=100):
 def send_telegram_notification(message):
     try:
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-        payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message}
+        payload = {"chat_id": TELEGRAM_GROUP_ID, "text": message}
         response = requests.post(url, json=payload)
         print(response.json()) 
         
         if response.status_code == 200:
             logging.info(f"Telegram Alert Sent: {message}")
-            print(f"📢 Telegram Notification Sent: {message}")
+            #print(f"📢 Telegram Notification Sent: {message}")
         else:
             logging.error(f"Failed to send Telegram message: {response.text}")
 
@@ -76,13 +77,17 @@ def analyze_order_book(order_book):
         largest_sell_wall = max(asks, key=lambda a: float(a[1]))
         spread = float(asks[0][0]) - float(bids[0][0])
 
-        whale_alert = ""
+        # Whale Alert Notifications
         if float(largest_buy_wall[1]) >= WHALER_THRESHOLD:
-            whale_alert = f"🐳 Large Buy Order Detected: {largest_buy_wall[1]} BTC at {largest_buy_wall[0]}"
+            whale_alert = f"🟢 **Bullish Alert!**\n" \
+                          f"🐳 Large Buy Order Detected:\n" \
+                          f"🔼 {largest_buy_wall[1]} BTC at {largest_buy_wall[0]}"
             send_telegram_notification(whale_alert)
 
         if float(largest_sell_wall[1]) >= WHALER_THRESHOLD:
-            whale_alert = f"🐳 Large Sell Order Detected: {largest_sell_wall[1]} BTC at {largest_sell_wall[0]}"
+            whale_alert = f"🔴 **Bearish Alert!**\n" \
+                          f"🐳 Large Sell Order Detected:\n" \
+                          f"🔽 {largest_sell_wall[1]} BTC at {largest_sell_wall[0]}"
             send_telegram_notification(whale_alert)
 
         return {
@@ -90,8 +95,7 @@ def analyze_order_book(order_book):
             "total_ask_volume": total_ask_volume,
             "largest_buy_wall": (float(largest_buy_wall[0]), float(largest_buy_wall[1])),
             "largest_sell_wall": (float(largest_sell_wall[0]), float(largest_sell_wall[1])),
-            "spread": spread,
-            "whale_alert": whale_alert
+            "spread": spread
         }
     except Exception as e:
         logging.error(f"Error analyzing order book: {e}")
@@ -162,4 +166,6 @@ def main():
         time.sleep(INTERVAL)
 
 if __name__ == "__main__":
-    main()
+    while True:
+        main()
+        time.sleep(INTERVAL)
