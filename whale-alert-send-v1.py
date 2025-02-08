@@ -20,6 +20,7 @@ WHALER_THRESHOLD = 50  # BTC volume to be considered a whale
 # Telegram Notification Setup
 TELEGRAM_BOT_TOKEN = "7634717158:AAHMMksZXje9CEF4qEMn3Vgge5F_qNs6sHg"
 TELEGRAM_CHAT_ID = "5463783915"
+TELEGRAM_GROUP_ID = "-4695344604"
 
 # Logging setup
 logging.basicConfig(
