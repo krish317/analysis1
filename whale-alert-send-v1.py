@@ -70,7 +70,7 @@ def send_whale_alert(volume, price, order_type):
     
     # Define color coding based on volume range
     if 10 <= volume < 50:
-        color = "⚫"  # Black for both Buy and Sell
+        color = "⚫" if order_type == "BUY" else "⚪"
         level = "Small Whale"
     elif 50 <= volume < 100:
         color = "🟣" if order_type == "BUY" else "🟡"  # Purple for Buy, Yellow for Sell
